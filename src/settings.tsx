@@ -30,6 +30,8 @@ export interface ZoteroGroup {
   id: number;
   name: string;
   lastUpdate?: number;
+  /** Library version used for incremental sync with the native Zotero API. */
+  libraryVersion?: number;
 }
 
 export interface ReferenceListSettings {
@@ -51,6 +53,12 @@ export interface ReferenceListSettings {
   pullFromZotero?: boolean;
   zoteroPort?: string;
   zoteroGroups: ZoteroGroup[];
+  /**
+   * When true, use the standard Zotero local REST API (Zotero 7/8 native
+   * citationKey field) instead of the Better BibTeX JSON-RPC endpoint.
+   * Better BibTeX does not need to be installed when this is enabled.
+   */
+  useNativeZoteroAPI?: boolean;
 }
 
 export class ReferenceListSettingsTab extends PluginSettingTab {
