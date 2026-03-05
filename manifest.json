@@ -1,10 +1,10 @@
 {
-	"id": "obsidian-pandoc-reference-list",
-	"name": "Pandoc Reference List",
-	"version": "2.0.25",
-	"minAppVersion": "0.15.0",
+	"id": "obsidian-pandoc-reference-list-zotero8",
+	"name": "Pandoc Reference List-zotero8",
+	"version": "1.0.0",
+	"minAppVersion": "1.0.0",
 	"description": "Displays a formatted reference in the sidebar for each pandoc citekey present in the current document.",
-	"author": "mgmeyers",
-	"authorUrl": "https://github.com/mgmeyers/obsidian-pandoc-reference-list",
+	"author": "wjvg-gif",
+	"authorUrl": "https://github.com/wjvg-gif/obsidian-pandoc-reference-list-zotero8",
 	"isDesktopOnly": true
 }
