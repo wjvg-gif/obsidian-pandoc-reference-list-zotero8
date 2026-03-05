@@ -4,6 +4,12 @@ on:
   push:
     tags:
       - '*'
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Release version (must match manifest.json version, e.g. 2.0.26-beta.0)'
+        required: true
+        type: string
 
 jobs:
   build:
@@ -22,13 +28,37 @@ jobs:
           npm install
           npm run build
 
+      - name: Determine release tag
+        id: tag
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "tag=${{ github.event.inputs.version }}" >> "$GITHUB_OUTPUT"
+          else
+            echo "tag=${GITHUB_REF#refs/tags/}" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Validate manifest version matches tag
+        run: |
+          MANIFEST_VERSION=$(node -p "require('./manifest.json').version")
+          TAG="${{ steps.tag.outputs.tag }}"
+          if [ "$MANIFEST_VERSION" != "$TAG" ]; then
+            echo "ERROR: manifest.json version ($MANIFEST_VERSION) does not match release tag ($TAG)"
+            exit 1
+          fi
+
       - name: Create release
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          tag="${GITHUB_REF#refs/tags/}"
+          tag="${{ steps.tag.outputs.tag }}"
+          prerelease_flag=""
+          # Mark as pre-release if the version contains a pre-release identifier
+          if echo "$tag" | grep -qE '[-](alpha|beta|rc|preview)\.[0-9]+'; then
+            prerelease_flag="--prerelease"
+          fi
 
           gh release create "$tag" \
             --title="$tag" \
             --notes-file="release-notes.md" \
+            $prerelease_flag \
             main.js manifest.json styles.css
