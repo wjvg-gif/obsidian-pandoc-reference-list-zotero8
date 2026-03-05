@@ -9,8 +9,11 @@ import {
   getCSLLocale,
   getCSLStyle,
   getItemJSONFromCiteKeys,
+  getItemJSONFromCiteKeysNative,
   getZBib,
+  getZBibNative,
   refreshZBib,
+  refreshZBibNative,
 } from './helpers';
 import {
   PromiseCapability,
@@ -377,15 +380,29 @@ export class BibManager {
     const bib: PartialCSLEntry[] = [];
     for (const group of settings.zoteroGroups) {
       try {
-        const list = await getZBib(
-          settings.zoteroPort,
-          cacheDir,
-          group.id,
-          fromCache
-        );
-        if (list?.length) {
-          bib.push(...list);
-          group.lastUpdate = Date.now();
+        if (settings.useNativeZoteroAPI) {
+          const res = await getZBibNative(
+            settings.zoteroPort,
+            cacheDir,
+            group.id,
+            fromCache
+          );
+          if (res.list?.length) {
+            bib.push(...res.list);
+            group.lastUpdate = Date.now();
+            group.libraryVersion = res.version;
+          }
+        } else {
+          const list = await getZBib(
+            settings.zoteroPort,
+            cacheDir,
+            group.id,
+            fromCache
+          );
+          if (list?.length) {
+            bib.push(...list);
+            group.lastUpdate = Date.now();
+          }
         }
       } catch (e) {
         console.error('Error fetching bibliography from Zotero', e);
@@ -436,12 +453,20 @@ export class BibManager {
 
     for (const group of settings.zoteroGroups) {
       try {
-        const res = await refreshZBib(
-          settings.zoteroPort,
-          cacheDir,
-          group.id,
-          group.lastUpdate
-        );
+        const res = settings.useNativeZoteroAPI
+          ? await refreshZBibNative(
+              settings.zoteroPort,
+              cacheDir,
+              group.id,
+              group.libraryVersion ?? 0
+            )
+          : await refreshZBib(
+              settings.zoteroPort,
+              cacheDir,
+              group.id,
+              group.lastUpdate
+            );
+
         if (!res) continue;
         if (res.list?.length) {
           bib.push(...res.list);
@@ -781,11 +806,17 @@ export class BibManager {
     for (const id of Object.keys(queries)) {
       const groupId = Number(id);
       try {
-        const items = await getItemJSONFromCiteKeys(
-          this.plugin.settings.zoteroPort,
-          queries[groupId],
-          groupId
-        );
+        const items = this.plugin.settings.useNativeZoteroAPI
+          ? await getItemJSONFromCiteKeysNative(
+              this.plugin.settings.zoteroPort,
+              queries[groupId],
+              groupId
+            )
+          : await getItemJSONFromCiteKeys(
+              this.plugin.settings.zoteroPort,
+              queries[groupId],
+              groupId
+            );
         if (items?.length) {
           for (const item of items) {
             const key = item.citekey || item.citationKey;

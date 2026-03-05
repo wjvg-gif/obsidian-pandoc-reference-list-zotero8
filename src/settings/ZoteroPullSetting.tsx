@@ -2,7 +2,11 @@ import React from 'react';
 import ReferenceList from 'src/main';
 import { SettingItem } from './SettingItem';
 import { t } from 'src/lang/helpers';
-import { DEFAULT_ZOTERO_PORT, getZUserGroups } from 'src/bib/helpers';
+import {
+  DEFAULT_ZOTERO_PORT,
+  getZUserGroups,
+  getZUserGroupsNative,
+} from 'src/bib/helpers';
 
 function validateGroups(
   plugin: ReferenceList,
@@ -24,6 +28,9 @@ export function ZoteroPullSetting({ plugin }: { plugin: ReferenceList }) {
   const [isEnabled, setIsEnabled] = React.useState(
     !!plugin.settings.pullFromZotero
   );
+  const [useNative, setUseNative] = React.useState(
+    !!plugin.settings.useNativeZoteroAPI
+  );
   const [possibleGroups, setPossibleGroups] = React.useState(
     plugin.settings.zoteroGroups
   );
@@ -32,18 +39,24 @@ export function ZoteroPullSetting({ plugin }: { plugin: ReferenceList }) {
   );
   const [connected, setConnected] = React.useState(false);
 
-  const pullUserGroups = React.useCallback(async () => {
-    try {
-      const groups = await getZUserGroups(
-        plugin.settings.zoteroPort ?? DEFAULT_ZOTERO_PORT
-      );
-      validateGroups(plugin, groups);
-      setPossibleGroups(groups);
-      setConnected(true);
-    } catch {
-      setConnected(false);
-    }
-  }, []);
+  const pullUserGroups = React.useCallback(
+    async (nativeMode?: boolean) => {
+      const isNative =
+        nativeMode !== undefined ? nativeMode : plugin.settings.useNativeZoteroAPI;
+      const port = plugin.settings.zoteroPort ?? DEFAULT_ZOTERO_PORT;
+      try {
+        const groups = isNative
+          ? await getZUserGroupsNative(port)
+          : await getZUserGroups(port);
+        validateGroups(plugin, groups);
+        setPossibleGroups(groups);
+        setConnected(true);
+      } catch {
+        setConnected(false);
+      }
+    },
+    []
+  );
 
   React.useEffect(() => {
     pullUserGroups();
@@ -55,7 +68,7 @@ export function ZoteroPullSetting({ plugin }: { plugin: ReferenceList }) {
         <SettingItem
           name={t('Pull bibliography from Zotero')}
           description={t(
-            'When enabled, bibliography data will be pulled from Zotero rather than a bibliography file. The Better Bibtex plugin must be installed in Zotero.'
+            'When enabled, bibliography data will be pulled from Zotero rather than a bibliography file.'
           )}
         >
           <div
@@ -92,6 +105,27 @@ export function ZoteroPullSetting({ plugin }: { plugin: ReferenceList }) {
       )}
       {!isEnabled ? null : (
         <>
+          <div className="pwc-setting-item setting-item">
+            <SettingItem
+              name={t('Use native Zotero API (Zotero 7/8)')}
+              description={t(
+                'Query the standard Zotero local API directly using the native citationKey field introduced in Zotero 7/8. Better BibTeX is not required when this is enabled.'
+              )}
+            >
+              <div
+                onClick={() => {
+                  setUseNative((cur) => {
+                    const next = !cur;
+                    plugin.settings.useNativeZoteroAPI = next;
+                    plugin.saveSettings(() => plugin.bibManager.reinit(true));
+                    pullUserGroups(next);
+                    return next;
+                  });
+                }}
+                className={`checkbox-container${useNative ? ' is-enabled' : ''}`}
+              />
+            </SettingItem>
+          </div>
           <div className="pwc-setting-item setting-item">
             <SettingItem
               name={t('Zotero port')}
